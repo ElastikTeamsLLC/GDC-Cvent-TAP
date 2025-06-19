@@ -5,7 +5,7 @@ from __future__ import annotations
 from singer_sdk import Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
 
-# TODO: Import your custom stream types here:
+# Import the custom stream types here:
 from tap_cvent import streams
 
 
@@ -14,7 +14,6 @@ class Tapcvent(Tap):
 
     name = "tap-cvent"
 
-    # TODO: Update this section with the actual config values you expect:
     config_jsonschema = th.PropertiesList(
         th.Property(
             "api_url",
@@ -48,11 +47,6 @@ class Tapcvent(Tap):
             description="OAuth2 client secret",
         ),
         th.Property(
-            "start_date",
-            th.DateTimeType,
-            description="The earliest record date to sync (format: YYYY-MM-DDTHH:MM:SS.sssZ)",
-            default="2023-01-01T00:00:00.000Z",  # Added default value
-        ),th.Property(
             "user_agent",
             th.StringType,
             description="A custom User-Agent header to send with each request",

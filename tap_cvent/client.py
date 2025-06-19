@@ -8,7 +8,7 @@ from functools import cached_property
 from importlib import resources
 
 from singer_sdk.helpers.jsonpath import extract_jsonpath
-from singer_sdk.pagination import BaseAPIPaginator  # noqa: TC002
+from singer_sdk.pagination import BaseAPIPaginator  
 from singer_sdk.streams import RESTStream
 
 from tap_cvent.auth import cventAuthenticator
@@ -18,7 +18,7 @@ if t.TYPE_CHECKING:
     from singer_sdk.helpers.types import Auth, Context
 
 
-# TODO: Delete this is if not using json files for schema definition
+
 SCHEMAS_DIR = resources.files(__package__) / "schemas"
 
 
@@ -103,7 +103,7 @@ class cventStream(RESTStream):
     def prepare_request_payload(
         self,
         context: Context | None,
-        next_page_token: t.Any | None,  # noqa: ANN401
+        next_page_token: t.Any | None,  
     ) -> dict | None:
         """Prepare the data payload for the REST API request."""
         # No payload needed for GET requests
@@ -117,7 +117,7 @@ class cventStream(RESTStream):
             self.records_jsonpath,
             input=data,
         )
-
+    # Not needed for this stream, but can be overridden in subclasses
     def post_process(
         self,
         row: dict,

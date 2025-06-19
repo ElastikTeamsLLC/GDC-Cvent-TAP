@@ -9,13 +9,10 @@ from singer_sdk import typing as th  # JSON Schema typing helpers
 
 from tap_cvent.client import cventStream
 
-# TODO: Delete this is if not using json files for schema definition
+
 SCHEMAS_DIR = resources.files(__package__) / "schemas"
-# TODO: - Override `UsersStream` and `GroupsStream` with your own stream definition.
-#       - Copy-paste as many times as needed to create multiple stream types.
 
 
-# 
 class AdmissionItemsStream(cventStream):
     """Stream for Cvent Admission Items API."""
 
