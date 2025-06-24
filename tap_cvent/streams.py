@@ -7,13 +7,13 @@ from importlib import resources
 
 from singer_sdk import typing as th  # JSON Schema typing helpers
 
-from tap_cvent.client import cventStream
+from tap_cvent.client import CventStream
 
 
 SCHEMAS_DIR = resources.files(__package__) / "schemas"
 
 
-class AdmissionItemsStream(cventStream):
+class AdmissionItemsStream(CventStream):
     """Stream for Cvent Admission Items API."""
 
     name = "admission_items"

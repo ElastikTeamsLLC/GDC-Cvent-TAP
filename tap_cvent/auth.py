@@ -9,7 +9,7 @@ from singer_sdk.helpers._util import utc_now
 
 # The SingletonMeta metaclass makes your streams reuse the same authenticator instance.
 # If this behaviour interferes with your use-case, you can remove the metaclass.
-class cventAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
+class CventAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
     """Authenticator class for cvent."""
 
     @property
@@ -26,7 +26,7 @@ class cventAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
         }
 
     @classmethod
-    def create_for_stream(cls, stream) -> cventAuthenticator:
+    def create_for_stream(cls, stream) -> CventAuthenticator:
         """Instantiate an authenticator for a specific Singer stream.
 
         Args:
@@ -53,22 +53,40 @@ class cventAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
         credentials = f"{self.client_id}:{self.client_secret}".encode()
         auth_token = base64.b64encode(credentials).decode("ascii")
         headers = {"Authorization": f"Basic {auth_token}","Content-Type": "application/x-www-form-urlencoded"}
-        token_response = requests.post(
-            self.auth_endpoint,
-            headers=headers,
-            params=querystring,
-            timeout=60,
-        )
+        
+        try:
+            token_response = requests.post(
+                self.auth_endpoint,
+                headers=headers,
+                params=querystring,
+                timeout=60,
+            )
+        except requests.RequestException as ex:
+            msg = f"Failed to connect to auth endpoint: {ex}"
+            raise RuntimeError(msg) from ex
 
         try:
             token_response.raise_for_status()
         except requests.HTTPError as ex:
-            msg = f"Failed OAuth login, response was '{token_response.json()}'. {ex}"
+            try:
+                error_detail = token_response.json()
+                msg = f"Failed OAuth login (HTTP {token_response.status_code}): {error_detail}"
+            except ValueError:
+                msg = f"Failed OAuth login (HTTP {token_response.status_code}): {token_response.text}"
             raise RuntimeError(msg) from ex
+
+        try:
+            token_json = token_response.json()
+        except ValueError as ex:
+            msg = f"Invalid JSON response from auth endpoint: {ex}"
+            raise RuntimeError(msg) from ex
+
+        if "access_token" not in token_json:
+            msg = f"No access_token in response: {token_json}"
+            raise RuntimeError(msg)
 
         self.logger.info("OAuth authorization attempt was successful.")
 
-        token_json = token_response.json()
         self.access_token = token_json["access_token"]
         expiration = token_json.get("expires_in", self._default_expiration)
         self.expires_in = int(expiration) if expiration else None

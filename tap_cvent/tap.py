@@ -47,13 +47,19 @@ class Tapcvent(Tap):
             description="OAuth2 client secret",
         ),
         th.Property(
+            "start_date",
+            th.StringType,
+            title="Start Date",
+            description="Initial date to start extracting data from (ISO 8601 format)",
+        ),
+        th.Property(
             "user_agent",
             th.StringType,
             description="A custom User-Agent header to send with each request",
         ),
     ).to_dict()
 
-    def discover_streams(self) -> list[streams.cventStream]:
+    def discover_streams(self) -> list[streams.CventStream]:
         """Return a list of discovered streams.
 
         Returns:

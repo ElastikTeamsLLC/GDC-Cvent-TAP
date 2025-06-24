@@ -11,7 +11,7 @@ from singer_sdk.helpers.jsonpath import extract_jsonpath
 from singer_sdk.pagination import BaseAPIPaginator  
 from singer_sdk.streams import RESTStream
 
-from tap_cvent.auth import cventAuthenticator
+from tap_cvent.auth import CventAuthenticator
 
 if t.TYPE_CHECKING:
     import requests
@@ -22,7 +22,7 @@ if t.TYPE_CHECKING:
 SCHEMAS_DIR = resources.files(__package__) / "schemas"
 
 
-class cventStream(RESTStream):
+class CventStream(RESTStream):
     
     records_jsonpath = "$.data[*]"  # Path to the data array in the response
     next_page_token_jsonpath = None  # We'll handle pagination manually
@@ -35,7 +35,7 @@ class cventStream(RESTStream):
     @cached_property
     def authenticator(self) -> Auth:
         """Return a new authenticator object."""
-        return cventAuthenticator.create_for_stream(self, )
+        return CventAuthenticator.create_for_stream(self, )
 
     @property
     def http_headers(self) -> dict:
@@ -51,30 +51,44 @@ class cventStream(RESTStream):
         self, response: requests.Response, previous_token: t.Any | None,  # noqa: ANN401
     ) -> t.Any | None:  # noqa: ANN401
         """Return a token for identifying next page or None if no more pages."""
-        # Parse response
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as ex:
+            self.logger.warning(f"Failed to parse response as JSON: {ex}")
+            return None
         
         # Check if there's a paging token
-        if "paging" in data and "_links" in data["paging"]:
-            # If there's a 'next' link, extract the token from it
-            if "next" in data["paging"]["_links"]:
-                next_href = data["paging"]["_links"]["next"]["href"]
-                # Extract token from href - assuming format like "...?token=xyz"
-                token = next_href.split("token=")[-1]
-                return token
+        if "paging" not in data:
+            self.logger.debug("No paging information in response")
+            return None
             
-            # If no next link but we have a currentToken and more data is available
-            if "currentToken" in data["paging"]:
-                total_count = data["paging"].get("totalCount", 0)
-                limit = data["paging"].get("limit", 0)
-                
-                # If we've received all items, no more pages
-                if len(data.get("data", [])) >= total_count:
-                    return None
-                    
-                # Otherwise use current token for next page
-                return data["paging"]["currentToken"]
+        paging = data["paging"]
         
+        # Check for next link in _links
+        if "_links" in paging and "next" in paging["_links"]:
+            next_href = paging["_links"]["next"]["href"]
+            # Extract token from href - assuming format like "...?token=xyz"
+            if "token=" in next_href:
+                token = next_href.split("token=")[-1].split("&")[0]
+                return token
+            else:
+                self.logger.warning(f"Next link found but no token parameter: {next_href}")
+                return None
+        
+        # Fallback: check if we have more data based on currentToken and counts
+        if "currentToken" in paging:
+            total_count = paging.get("totalCount", 0)
+            current_count = len(data.get("data", []))
+            
+            # If we've received all items, no more pages
+            if current_count >= total_count:
+                self.logger.debug(f"Reached end of data: {current_count}/{total_count}")
+                return None
+                
+            # Otherwise use current token for next page
+            return paging["currentToken"]
+        
+        self.logger.debug("No pagination token found")
         return None
 
     def get_url_params(
